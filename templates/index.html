@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FrameMaker Copy-Paste & Translation Engine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="background-glow"></div>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <span class="gradient-text">REYDM</span> FM-Trans
+            </div>
+            <h1>FrameMaker Translation Copy-Paste Engine</h1>
+            <p class="subtitle">Upload your source FM document and target Word callout to automatically paste translations with formatting preserved.</p>
+        </header>
+
+        <main>
+            <div class="glass-card">
+                <form id="translation-form" enctype="multipart/form-data">
+                    <div class="drop-zones">
+                        <!-- FM File Drop Zone -->
+                        <div class="drop-zone" id="fm-drop-zone">
+                            <input type="file" name="fm_file" id="fm-file-input" accept=".fm" required>
+                            <div class="drop-zone-content">
+                                <div class="icon-wrapper">
+                                    <svg viewBox="0 0 24 24" class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                </div>
+                                <h3>Source FrameMaker File</h3>
+                                <p class="drag-text">Drag & drop or <span class="highlight">browse</span></p>
+                                <p class="file-info">Supports .fm files</p>
+                                <div class="file-name-preview" id="fm-file-preview"></div>
+                            </div>
+                        </div>
+
+                        <!-- DOCX File Drop Zone -->
+                        <div class="drop-zone" id="docx-drop-zone">
+                            <input type="file" name="docx_file" id="docx-file-input" accept=".docx" required>
+                            <div class="drop-zone-content">
+                                <div class="icon-wrapper">
+                                    <svg viewBox="0 0 24 24" class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                </div>
+                                <h3>Word Translation Callout</h3>
+                                <p class="drag-text">Drag & drop or <span class="highlight">browse</span></p>
+                                <p class="file-info">Supports .docx files</p>
+                                <div class="file-name-preview" id="docx-file-preview"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <button type="submit" class="btn btn-primary" id="submit-btn">
+                            <span class="btn-text">Start Process</span>
+                            <span class="btn-glow"></span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Processing & Steps Panel -->
+                <div class="process-panel hidden" id="process-panel">
+                    <div class="spinner-wrapper">
+                        <div class="spinner"></div>
+                    </div>
+                    <h2>Processing Your Translation</h2>
+                    <p class="process-desc">Adobe FrameMaker is running automation tasks in the background. Please wait.</p>
+
+                    <!-- Real-Time Progress Steps -->
+                    <div class="steps">
+                        <div class="step" id="step-export">
+                            <div class="step-dot"></div>
+                            <div class="step-text">Exporting source FM to MIF...</div>
+                        </div>
+                        <div class="step" id="step-translate">
+                            <div class="step-dot"></div>
+                            <div class="step-text">Mapping translation callout & rebuilding MIF...</div>
+                        </div>
+                        <div class="step" id="step-import">
+                            <div class="step-dot"></div>
+                            <div class="step-text">Importing translated MIF back to FM...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Result Card -->
+                <div class="result-panel hidden" id="result-panel">
+                    <div class="success-icon-wrapper">
+                        <svg viewBox="0 0 24 24" class="success-icon"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                    <h2>Translation Pasted Successfully!</h2>
+                    <p>All formatting tags were mapped, variables resolved, and translated text copy-pasted into your output FrameMaker file.</p>
+                    <div class="actions">
+                        <a href="#" class="btn btn-success" id="download-btn">
+                            <span class="btn-text">Download Translated FM</span>
+                            <span class="btn-glow"></span>
+                        </a>
+                        <button class="btn btn-secondary" id="reset-btn">Process Another File</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 REYDM Advanced Translation Tools. Powered by Adobe FrameMaker & Python.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Setup drop zones drag and drop handlers
+        const dropZones = ['fm', 'docx'];
+        dropZones.forEach(zone => {
+            const dz = document.getElementById(`${zone}-drop-zone`);
+            const input = document.getElementById(`${zone}-file-input`);
+            const preview = document.getElementById(`${zone}-file-preview`);
+
+            dz.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dz.classList.add('drag-over');
+            });
+
+            ['dragleave', 'drop'].forEach(evt => {
+                dz.addEventListener(evt, () => dz.classList.remove('drag-over'));
+            });
+
+            input.addEventListener('change', () => {
+                if (input.files.length > 0) {
+                    preview.textContent = input.files[0].name;
+                    preview.style.display = 'block';
+                    dz.classList.add('has-file');
+                }
+            });
+        });
+
+        const form = document.getElementById('translation-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const processPanel = document.getElementById('process-panel');
+        const resultPanel = document.getElementById('result-panel');
+        const downloadBtn = document.getElementById('download-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        // Form Submit Processing Handler
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Show processing screen
+            form.classList.add('hidden');
+            processPanel.classList.remove('hidden');
+
+            const steps = ['step-export', 'step-translate', 'step-import'];
+            
+            // Simulate progression of steps for feedback
+            let activeStep = 0;
+            const updateSteps = () => {
+                steps.forEach((stepId, idx) => {
+                    const stepEl = document.getElementById(stepId);
+                    if (idx < activeStep) {
+                        stepEl.classList.remove('active');
+                        stepEl.classList.add('done');
+                    } else if (idx === activeStep) {
+                        stepEl.classList.add('active');
+                        stepEl.classList.remove('done');
+                    } else {
+                        stepEl.classList.remove('active', 'done');
+                    }
+                });
+            };
+
+            updateSteps();
+            const interval = setInterval(() => {
+                if (activeStep < steps.length - 1) {
+                    activeStep++;
+                    updateSteps();
+                }
+            }, 6000); // Step simulator update (runs concurrently with backend call)
+
+            // Submit values to backend
+            const formData = new FormData(form);
+            try {
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                clearInterval(interval);
+
+                if (result.success) {
+                    // Update all steps to completed
+                    activeStep = steps.length;
+                    updateSteps();
+                    
+                    setTimeout(() => {
+                        processPanel.classList.add('hidden');
+                        resultPanel.classList.remove('hidden');
+                        downloadBtn.href = result.download_url;
+                    }, 800);
+                } else {
+                    alert(result.error || 'An error occurred during translation processing.');
+                    resetUI();
+                }
+            } catch (err) {
+                clearInterval(interval);
+                alert('Connection error. Make sure the Flask server is running.');
+                resetUI();
+            }
+        });
+
+        resetBtn.addEventListener('click', resetUI);
+
+        function resetUI() {
+            form.classList.remove('hidden');
+            processPanel.classList.add('hidden');
+            resultPanel.classList.add('hidden');
+            form.reset();
+            document.getElementById('fm-file-preview').style.display = 'none';
+            document.getElementById('docx-file-preview').style.display = 'none';
+            document.getElementById('fm-drop-zone').classList.remove('has-file');
+            document.getElementById('docx-drop-zone').classList.remove('has-file');
+        }
+    </script>
+</body>
+</html>
